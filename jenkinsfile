@@ -13,17 +13,17 @@ pipeline {
 
             steps {
                 sh '''
-                    ls -la
                     node --version
                     npm --version
+
                     npm ci
+
                     npm run build
-                    ls -la
                 '''
             }
         }
 
-        stage('Test') {
+        stage('Unit Test') {
             agent {
                 docker {
                     image 'node:18-alpine'
@@ -33,12 +33,14 @@ pipeline {
 
             steps {
                 sh '''
-                    #test -f build/index.html
-                    npm test
+                    npm ci
+
+                    npm test -- --watchAll=false
                 '''
             }
         }
-         stage('E2E') {
+
+        stage('E2E') {
             agent {
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.60.0-noble'
@@ -48,16 +50,22 @@ pipeline {
 
             steps {
                 sh '''
-                   npm install serve
-                   node_modules/.bin/serve -s build &
-                   sleep 10
-                   npx playwright-test --reporter=line
+                    npm ci
+
+                    npm install -g serve
+
+                    nohup serve -s build -l 3000 &
+
+                    sleep 10
+
+                    npx playwright test --reporter=line
                 '''
             }
         }
     }
-    post{
-        always{
+
+    post {
+        always {
             junit 'jest-results/junit.xml'
         }
     }
